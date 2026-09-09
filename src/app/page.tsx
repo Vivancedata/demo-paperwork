@@ -70,7 +70,7 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
       <p className="font-mono text-xs uppercase tracking-widest text-brand">
-        VivanceData demo — paperwork typed once
+        Vivancedata demo — paperwork typed once
       </p>
       <h1 className="mt-4 text-display text-balance">
         Your document, as a record
@@ -211,7 +211,7 @@ export default function Home() {
       <footer className="mt-16 border-t border-border pt-6 text-sm text-muted-foreground">
         Built by{" "}
         <a className="text-brand underline-offset-4 hover:underline" href="https://www.vivancedata.com">
-          VivanceData
+          Vivancedata
         </a>{" "}
         — the same extraction, run on your paperwork before you pay for a build.
       </footer>
