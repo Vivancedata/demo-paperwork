@@ -9,7 +9,7 @@ const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans", dis
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Paperwork demo — VivanceData",
+  title: "Paperwork demo — Vivancedata",
   description:
     "Drop a delivery slip, invoice or permit and watch it become a structured record. Illegible parts get flagged, not guessed at.",
 };
