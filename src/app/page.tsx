@@ -66,13 +66,14 @@ export default function Home() {
   }
 
   const canExtract = !busy && (text.trim().length > 0 || image !== null);
+  const disabled = !canExtract;
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
-      <p className="font-mono text-xs uppercase tracking-widest text-brand">
+      <p className="text-label uppercase text-mute">
         Vivancedata demo — paperwork typed once
       </p>
-      <h1 className="mt-4 text-display text-balance">
+      <h1 className="mt-4 font-display text-serif-lg text-balance">
         Your document, as a record
       </h1>
       <p className="mt-4 max-w-prose text-muted-foreground">
@@ -113,7 +114,7 @@ export default function Home() {
         {image ? (
           <p className="mt-4 font-mono text-sm text-muted-foreground">
             {image.name}{" "}
-            <button className="text-brand underline-offset-4 hover:underline" onClick={() => setImage(null)}>
+            <button className="text-foreground underline decoration-rule underline-offset-4 hover:decoration-current" onClick={() => setImage(null)}>
               remove
             </button>
           </p>
@@ -127,12 +128,18 @@ export default function Home() {
         )}
 
         <button
-          className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          disabled={!canExtract}
+          className={`mt-4 inline-flex min-h-11 items-center rounded-md px-4 text-label uppercase transition-colors ${disabled
+            ? "border border-rule text-mute"
+            : "bg-primary text-primary-foreground hover:bg-primary/85"}`}
+          disabled={disabled}
           onClick={extract}
         >
           {busy ? "Reading…" : "Extract the record"}
         </button>
+        {/* The other half of a hollow control is saying what fills it. */}
+        {disabled && !busy ? (
+          <p className="mt-3 text-caption text-mute">Add a photo of a slip, or paste its text.</p>
+        ) : null}
         {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
       </div>
 
@@ -191,7 +198,7 @@ export default function Home() {
 
           {record.flagged_as_unreadable.length > 0 ? (
             <div className="mt-6 rounded-md border border-border p-4">
-              <h3 className="font-mono text-xs uppercase tracking-wider text-brand">
+              <h3 className="text-label uppercase text-foreground">
                 Flagged, not guessed
               </h3>
               <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
@@ -210,7 +217,7 @@ export default function Home() {
 
       <footer className="mt-16 border-t border-border pt-6 text-sm text-muted-foreground">
         Built by{" "}
-        <a className="text-brand underline-offset-4 hover:underline" href="https://www.vivancedata.com">
+        <a className="text-foreground underline decoration-rule underline-offset-4 hover:decoration-current" href="https://www.vivancedata.com">
           Vivancedata
         </a>{" "}
         — the same extraction, run on your paperwork before you pay for a build.
