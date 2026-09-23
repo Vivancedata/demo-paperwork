@@ -18,7 +18,7 @@ export default function Home() {
 
   async function onFile(file: File) {
     if (!MEDIA_TYPES.includes(file.type as (typeof MEDIA_TYPES)[number])) {
-      setError("JPEG, PNG or WebP only.");
+      setError("That file type is not supported. Choose a JPEG, PNG or WebP photo.");
       return;
     }
     const buf = await file.arrayBuffer();
@@ -45,11 +45,15 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(image ? { image: image.payload } : { text }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
+      // A proxy timeout returns HTML, not JSON; fall through to the
+      // status-based message instead of surfacing a parser error.
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.record) {
+        throw new Error(data.error ?? `Request failed (${res.status}). Try again in a moment.`);
+      }
       setRecord(data.record);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Extraction failed.");
+      setError(e instanceof Error ? e.message : "Extraction failed. Try again in a moment.");
     } finally {
       setBusy(false);
     }
@@ -71,7 +75,7 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
       <p className="text-label uppercase text-mute">
-        Vivancedata demo — paperwork typed once
+        <span translate="no">Vivancedata</span> demo — paperwork typed once
       </p>
       <h1 className="mt-4 font-display text-serif-lg text-balance">
         Your document, as a record
@@ -239,7 +243,11 @@ export default function Home() {
 
       <footer className="mt-16 border-t border-border pt-6 text-sm text-muted-foreground">
         Built by{" "}
-        <a className="text-foreground underline decoration-rule underline-offset-4 hover:decoration-current" href="https://www.vivancedata.com">
+        <a
+          className="text-foreground underline decoration-rule underline-offset-4 hover:decoration-current"
+          href="https://www.vivancedata.com"
+          translate="no"
+        >
           Vivancedata
         </a>{" "}
         — the same extraction, run on your paperwork before you pay for a build.
