@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useTransition } from "react";
 import { SAMPLE_DELIVERY_SLIP, SAMPLE_INVOICE } from "@/lib/samples";
 import { toCsv, type ExtractedRecord } from "@/lib/schema";
 
@@ -8,11 +8,43 @@ type ImagePayload = { media_type: "image/jpeg" | "image/png" | "image/webp"; dat
 
 const MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
+// Static markup, hoisted so a keystroke in the controlled textarea does not
+// rebuild it (react-best-practices: rendering-hoist-jsx).
+const intro = (
+  <>
+    <p className="text-label uppercase text-mute">
+      <span translate="no">Vivancedata</span> demo — paperwork typed once
+    </p>
+    <h1 className="mt-4 font-display text-serif-lg text-balance">
+      Your document, as a record
+    </h1>
+    <p className="mt-4 max-w-prose text-muted-foreground">
+      Paste the text of a delivery slip, invoice or permit — or photograph one —
+      and it becomes a structured record you can export. Anything illegible is
+      flagged, not guessed at. Nothing you submit here is stored.
+    </p>
+  </>
+);
+
+const footer = (
+  <footer className="mt-16 border-t border-border pt-6 text-sm text-muted-foreground">
+    Built by{" "}
+    <a
+      className="text-foreground underline decoration-rule underline-offset-4 hover:decoration-current"
+      href="https://www.vivancedata.com"
+      translate="no"
+    >
+      Vivancedata
+    </a>{" "}
+    — the same extraction, run on your paperwork before you pay for a build.
+  </footer>
+);
+
 export default function Home() {
   const [text, setText] = useState("");
   const [image, setImage] = useState<{ payload: ImagePayload; name: string } | null>(null);
   const [record, setRecord] = useState<ExtractedRecord | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, startExtract] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -35,28 +67,28 @@ export default function Home() {
     setError(null);
   }
 
-  async function extract() {
-    setBusy(true);
+  function extract() {
     setError(null);
     setRecord(null);
-    try {
-      const res = await fetch("/api/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(image ? { image: image.payload } : { text }),
-      });
-      // A proxy timeout returns HTML, not JSON; fall through to the
-      // status-based message instead of surfacing a parser error.
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.record) {
-        throw new Error(data.error ?? `Request failed (${res.status}). Try again in a moment.`);
+    startExtract(async () => {
+      try {
+        const res = await fetch("/api/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(image ? { image: image.payload } : { text }),
+        });
+        // A proxy timeout returns HTML, not JSON; fall through to the
+        // status-based message instead of surfacing a parser error.
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.record) {
+          throw new Error(data.error ?? `Request failed (${res.status}). Try again in a moment.`);
+        }
+        startExtract(() => setRecord(data.record));
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Extraction failed. Try again in a moment.";
+        startExtract(() => setError(message));
       }
-      setRecord(data.record);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Extraction failed. Try again in a moment.");
-    } finally {
-      setBusy(false);
-    }
+    });
   }
 
   function downloadCsv() {
@@ -74,17 +106,7 @@ export default function Home() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
-      <p className="text-label uppercase text-mute">
-        <span translate="no">Vivancedata</span> demo — paperwork typed once
-      </p>
-      <h1 className="mt-4 font-display text-serif-lg text-balance">
-        Your document, as a record
-      </h1>
-      <p className="mt-4 max-w-prose text-muted-foreground">
-        Paste the text of a delivery slip, invoice or permit — or photograph one —
-        and it becomes a structured record you can export. Anything illegible is
-        flagged, not guessed at. Nothing you submit here is stored.
-      </p>
+      {intro}
 
       <div className="mt-10 rounded-md border border-border bg-card p-6">
         <div className="flex flex-wrap items-center gap-3">
@@ -241,17 +263,7 @@ export default function Home() {
         </section>
       ) : null}
 
-      <footer className="mt-16 border-t border-border pt-6 text-sm text-muted-foreground">
-        Built by{" "}
-        <a
-          className="text-foreground underline decoration-rule underline-offset-4 hover:decoration-current"
-          href="https://www.vivancedata.com"
-          translate="no"
-        >
-          Vivancedata
-        </a>{" "}
-        — the same extraction, run on your paperwork before you pay for a build.
-      </footer>
+      {footer}
     </main>
   );
 }
