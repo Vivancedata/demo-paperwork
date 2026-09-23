@@ -112,14 +112,21 @@ export default function Home() {
         </div>
 
         {image ? (
-          <p className="mt-4 font-mono text-sm text-muted-foreground">
+          <p className="mt-4 break-words font-mono text-sm text-muted-foreground">
             {image.name}{" "}
-            <button className="text-foreground underline decoration-rule underline-offset-4 hover:decoration-current" onClick={() => setImage(null)}>
+            <button
+              className="text-foreground underline decoration-rule underline-offset-4 hover:decoration-current"
+              aria-label={`Remove ${image.name}`}
+              onClick={() => setImage(null)}
+            >
               remove
             </button>
           </p>
         ) : (
           <textarea
+            name="document"
+            aria-label="Document text"
+            autoComplete="off"
             className="mt-4 h-56 w-full resize-y rounded-md border border-border bg-background p-4 font-mono text-sm"
             placeholder="Paste document text here…"
             value={text}
@@ -132,20 +139,35 @@ export default function Home() {
             ? "border border-rule text-mute"
             : "bg-primary text-primary-foreground hover:bg-primary/85"}`}
           disabled={disabled}
+          aria-busy={busy}
           onClick={extract}
         >
-          {busy ? "Reading…" : "Extract the record"}
+          {busy ? (
+            <>
+              <span
+                aria-hidden="true"
+                className="mr-2 inline-block size-3 animate-spin rounded-full border-2 border-current border-t-transparent"
+              />
+              Reading…
+            </>
+          ) : (
+            "Extract the record"
+          )}
         </button>
         {/* The other half of a hollow control is saying what fills it. */}
         {disabled && !busy ? (
           <p className="mt-3 text-caption text-mute">Add a photo of a slip, or paste its text.</p>
         ) : null}
-        {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
+        {/* Always mounted so screen readers announce the error when it lands. */}
+        <div aria-live="polite">
+          {error ? <p className="mt-3 break-words text-sm text-destructive">{error}</p> : null}
+          {record ? <p className="sr-only">Record extracted. It is below.</p> : null}
+        </div>
       </div>
 
       {record ? (
         <section className="mt-10">
-          <div className="flex items-baseline justify-between">
+          <div className="flex items-baseline justify-between gap-3">
             <h2 className="text-heading-2">The record</h2>
             <button
               className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent"
@@ -164,9 +186,9 @@ export default function Home() {
               ["Job / site", record.job_or_site_reference],
               ["Total", record.total_amount],
             ].map(([label, value]) => (
-              <div key={label}>
+              <div key={label} className="min-w-0">
                 <dt className="font-mono text-xs uppercase tracking-wider text-muted-foreground">{label}</dt>
-                <dd className="mt-1">{value || "—"}</dd>
+                <dd className="mt-1 break-words">{value || "—"}</dd>
               </div>
             ))}
           </dl>
@@ -201,7 +223,7 @@ export default function Home() {
               <h3 className="text-label uppercase text-foreground">
                 Flagged, not guessed
               </h3>
-              <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+              <ul className="mt-2 space-y-1 break-words text-sm text-muted-foreground">
                 {record.flagged_as_unreadable.map((f, i) => (
                   <li key={i}>{f}</li>
                 ))}
@@ -210,7 +232,7 @@ export default function Home() {
           ) : null}
 
           {record.notes ? (
-            <p className="mt-4 text-sm text-muted-foreground">{record.notes}</p>
+            <p className="mt-4 break-words text-sm text-muted-foreground">{record.notes}</p>
           ) : null}
         </section>
       ) : null}
