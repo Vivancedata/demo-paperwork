@@ -22,6 +22,8 @@ const intro = (
       Paste the text of a delivery slip, invoice or permit — or photograph one —
       and it becomes a structured record you can export. Anything illegible is
       flagged, not guessed at. Nothing you submit here is stored.
+      Submissions are sent to Anthropic’s API for processing and aren’t
+      retained by Vivancedata. Don’t upload real customer data.
     </p>
   </>
 );
