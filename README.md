@@ -34,7 +34,7 @@ server-side; the browser only ever talks to `/api/extract`.
 ## How it works
 
 One route handler (`src/app/api/extract/route.ts`) sends the document — text
-or image — to Claude (`claude-opus-5`) with a JSON Schema enforced via
+or image — to Claude (`claude-haiku-5-5`) with a JSON Schema enforced via
 `output_config`, so the response is guaranteed to parse against
 `src/lib/schema.ts`. The system prompt makes flagging a requirement:
 transcribing only what the page says is the product, and a guessed vendor or
