@@ -72,8 +72,21 @@ export const EXTRACTION_SCHEMA = {
   },
 } as const;
 
+/**
+ * A cell that starts with =, +, @ (or a tab/CR, or a minus that is not just a
+ * negative amount) is run as a formula by Excel and Sheets. The values here are
+ * transcribed from an uploaded document, so a hostile document could plant
+ * `=HYPERLINK(...)` in the export; prefixing a quote keeps it inert text.
+ */
+function neutraliseFormula(s: string): string {
+  if (/^[=+@\t\r]/.test(s) || (s.startsWith("-") && !/^-[\d\s$€£.,]*$/.test(s))) {
+    return `'${s}`;
+  }
+  return s;
+}
+
 export function toCsv(record: ExtractedRecord): string {
-  const esc = (s: string) => `"${s.replaceAll('"', '""')}"`;
+  const esc = (s: string) => `"${neutraliseFormula(s).replaceAll('"', '""')}"`;
   const head = [
     "document_type", "vendor_or_issuer", "document_number", "date",
     "job_or_site_reference", "line_description", "quantity", "unit", "amount",
