@@ -19,9 +19,11 @@ Rules that are the product, not suggestions:
 - Keep amounts exactly as written (currency symbols, separators) — no
   normalisation, since downstream accounting systems disagree about formats.`;
 
+const MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+
 type Payload = {
   text?: string;
-  image?: { media_type: "image/jpeg" | "image/png" | "image/webp"; data: string };
+  image?: { media_type: (typeof MEDIA_TYPES)[number]; data: string };
 };
 
 export async function POST(request: Request) {
@@ -47,18 +49,33 @@ export async function POST(request: Request) {
     );
   }
 
-  let payload: Payload;
+  let body: unknown;
   try {
-    payload = await request.json();
+    body = await request.json();
   } catch {
+    body = undefined;
+  }
+  // `null`, an array or a bare string is valid JSON but not a payload;
+  // without this check `payload.text` throws and the route 500s.
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
     return NextResponse.json({ error: "Body must be JSON. Send `{ \"text\": \"…\" }` or an `image`." }, { status: 400 });
   }
+  const payload = body as Payload;
 
   if (typeof payload.text === "string" && payload.text.length > 20_000) {
     return NextResponse.json({ error: "Text too long (20k characters max). Shorten it and try again." }, { status: 413 });
   }
   const hasText = typeof payload.text === "string" && payload.text.trim().length > 0;
   const hasImage = Boolean(payload.image?.data && payload.image.media_type);
+  if (
+    hasImage &&
+    (typeof payload.image!.data !== "string" || !MEDIA_TYPES.includes(payload.image!.media_type))
+  ) {
+    return NextResponse.json(
+      { error: "Unsupported image. Send a base64 JPEG, PNG or WebP." },
+      { status: 415 },
+    );
+  }
   if (!hasText && !hasImage) {
     return NextResponse.json(
       { error: "Provide `text` or `image` to extract from." },
