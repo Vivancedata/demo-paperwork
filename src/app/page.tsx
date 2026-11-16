@@ -269,6 +269,18 @@ export default function Home() {
           {record.notes ? (
             <p className="mt-4 break-words text-sm text-muted-foreground">{record.notes}</p>
           ) : null}
+
+          <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-md border border-border bg-card p-6">
+            <p className="min-w-0 flex-1 basis-60 text-muted-foreground">
+              Want this on your own paperwork, every day? We build it for your documents.
+            </p>
+            <a
+              className="inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-label uppercase text-primary-foreground transition-colors hover:bg-primary/85"
+              href="https://www.vivancedata.com/contact?utm_source=demo-paperwork"
+            >
+              Book a call
+            </a>
+          </div>
         </section>
       ) : null}
 
