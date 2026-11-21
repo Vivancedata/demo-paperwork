@@ -98,6 +98,18 @@ describe("paperwork page", () => {
     expect(csv).toContain('"Simpson HDU4 holdown","12"');
   });
 
+  it("offers a call once the record is shown, and not before", async () => {
+    const user = userEvent.setup();
+    mockFetch(200, { record: RECORD });
+    render(<Home />);
+    expect(screen.queryByRole("link", { name: /book a call/i })).not.toBeInTheDocument();
+    await extractSample(user);
+    expect(screen.getByRole("link", { name: /book a call/i })).toHaveAttribute(
+      "href",
+      "https://www.vivancedata.com/contact?utm_source=demo-paperwork",
+    );
+  });
+
   it("clears a stale record as soon as the text is edited", async () => {
     const user = userEvent.setup();
     mockFetch(200, { record: RECORD });
