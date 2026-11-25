@@ -18,14 +18,15 @@ const displaySerif = Instrument_Serif({
   display: "swap",
 });
 
+// Each demo's own layout (src/app/<demo>/layout.tsx) sets its title and
+// description; these are for the index at `/`.
 export const metadata: Metadata = {
-  title: "Paperwork demo — Vivancedata",
-  description:
-    "Drop a delivery slip, invoice or permit and watch it become a structured record. Illegible parts get flagged, not guessed at.",
+  title: "Demos — Vivancedata",
+  description: "Three small, working demos of the extraction Vivancedata builds for trades businesses.",
 };
 
 // Matches `--background` of the dark nightshift world (hsl(60 8% 5%)), the
-// only theme this demo ships, so mobile browser chrome blends into the page.
+// only theme these demos ship, so mobile browser chrome blends into the page.
 export const viewport: Viewport = {
   themeColor: "#0e0e0c",
   colorScheme: "dark",
@@ -33,7 +34,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    // `data-world` opts this demo into the same token set the marketing site
+    // `data-world` opts the demos into the same token set the marketing site
     // runs, so the click-through from there does not change grounds.
     <html
       lang="en"

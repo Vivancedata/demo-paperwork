@@ -1,4 +1,4 @@
-# demo-paperwork
+# Vivancedata demos
 
 ## How we work
 
@@ -25,7 +25,7 @@ them every time, not only when one happens to trigger:
 
 ### Issue tracker
 
-GitHub Issues on `Vivancedata/demo-paperwork`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+GitHub Issues on `Vivancedata/demo-paperwork` (the repo that now holds all three demos), via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
@@ -38,3 +38,17 @@ Single-context: `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/d
 ## Checks
 
 `npm run verify` (lint, `tsc --noEmit`, Vitest unit tests, production build) must pass before a PR is opened; CI runs it plus a Playwright smoke test (`npm run build && npm run test:e2e`). Unit tests stub the Anthropic API, so no key is needed. Fix the code, not the test, when a check fails.
+
+## Layout
+
+One Next.js app serves three demos, each on its own route and with its own
+docs. Keep a demo's code inside its own folders; share only what all three use.
+
+- `src/demos/registry.ts`: the three demos, their titles and their domains.
+- `src/demos/<demo>/`: that demo's schema and samples.
+- `src/app/<demo>/page.tsx` and `src/app/api/<demo>/extract/route.ts`: its
+  page and its one paid endpoint.
+- `src/proxy.ts`: on a demo's own domain (or with `DEMO=<demo>` set), `/` shows
+  that demo. Anywhere else `/` is an index of all three.
+- `docs/demos/<demo>/PRODUCT.md` and `DESIGN.md`: each demo's product and
+  design notes. Read the one for the demo you're changing before UI work.

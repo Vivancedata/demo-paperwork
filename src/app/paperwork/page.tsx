@@ -1,0 +1,290 @@
+"use client";
+
+import { useRef, useState, useTransition } from "react";
+import { SAMPLE_DELIVERY_SLIP, SAMPLE_INVOICE } from "@/demos/paperwork/samples";
+import { toCsv, type ExtractedRecord } from "@/demos/paperwork/schema";
+
+type ImagePayload = { media_type: "image/jpeg" | "image/png" | "image/webp"; data: string };
+
+const MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+
+// Static markup, hoisted so a keystroke in the controlled textarea does not
+// rebuild it (react-best-practices: rendering-hoist-jsx).
+const intro = (
+  <>
+    <p className="text-label uppercase text-mute">
+      <span translate="no">Vivancedata</span> demo — paperwork typed once
+    </p>
+    <h1 className="mt-4 font-display text-serif-lg text-balance">
+      Your document, as a record
+    </h1>
+    <p className="mt-4 max-w-prose text-muted-foreground">
+      Paste the text of a delivery slip, invoice or permit — or photograph one —
+      and it becomes a structured record you can export. Anything illegible is
+      flagged, not guessed at. Nothing you submit here is stored.
+      Submissions are sent to Anthropic’s API for processing and aren’t
+      retained by Vivancedata. Don’t upload real customer data.
+    </p>
+  </>
+);
+
+const footer = (
+  <footer className="mt-16 border-t border-border pt-6 text-sm text-muted-foreground">
+    Built by{" "}
+    <a
+      className="text-foreground underline decoration-rule underline-offset-4 hover:decoration-current"
+      href="https://www.vivancedata.com"
+      translate="no"
+    >
+      Vivancedata
+    </a>{" "}
+    — the same extraction, run on your paperwork before you pay for a build.
+  </footer>
+);
+
+export default function Home() {
+  const [text, setText] = useState("");
+  const [image, setImage] = useState<{ payload: ImagePayload; name: string } | null>(null);
+  const [record, setRecord] = useState<ExtractedRecord | null>(null);
+  const [busy, startExtract] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  async function onFile(file: File) {
+    if (!MEDIA_TYPES.includes(file.type as (typeof MEDIA_TYPES)[number])) {
+      setError("That file type is not supported. Choose a JPEG, PNG or WebP photo.");
+      return;
+    }
+    const buf = await file.arrayBuffer();
+    let binary = "";
+    const bytes = new Uint8Array(buf);
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+    setImage({
+      payload: { media_type: file.type as ImagePayload["media_type"], data: btoa(binary) },
+      name: file.name,
+    });
+    setText("");
+    setRecord(null);
+    setError(null);
+  }
+
+  function extract() {
+    setError(null);
+    setRecord(null);
+    startExtract(async () => {
+      try {
+        const res = await fetch("/api/paperwork/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(image ? { image: image.payload } : { text }),
+        });
+        // A proxy timeout returns HTML, not JSON; fall through to the
+        // status-based message instead of surfacing a parser error.
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.record) {
+          throw new Error(data.error ?? `Request failed (${res.status}). Try again in a moment.`);
+        }
+        startExtract(() => setRecord(data.record));
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Extraction failed. Try again in a moment.";
+        startExtract(() => setError(message));
+      }
+    });
+  }
+
+  function downloadCsv() {
+    if (!record) return;
+    const blob = new Blob([toCsv(record)], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${record.document_number || "record"}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  const canExtract = !busy && (text.trim().length > 0 || image !== null);
+  const disabled = !canExtract;
+
+  return (
+    <main className="mx-auto max-w-3xl px-6 py-16">
+      {intro}
+
+      <div className="mt-10 rounded-md border border-border bg-card p-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent"
+            onClick={() => { setText(SAMPLE_DELIVERY_SLIP); setImage(null); setRecord(null); }}
+          >
+            Sample delivery slip
+          </button>
+          <button
+            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent"
+            onClick={() => { setText(SAMPLE_INVOICE); setImage(null); setRecord(null); }}
+          >
+            Sample invoice
+          </button>
+          <button
+            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent"
+            onClick={() => fileInput.current?.click()}
+          >
+            Photo of your own…
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              // Reset so choosing the same photo again (after "remove") still
+              // fires onChange.
+              e.target.value = "";
+              if (file) void onFile(file);
+            }}
+          />
+        </div>
+
+        {image ? (
+          <p className="mt-4 break-words font-mono text-sm text-muted-foreground">
+            {image.name}{" "}
+            <button
+              className="text-foreground underline decoration-rule underline-offset-4 hover:decoration-current"
+              aria-label={`Remove ${image.name}`}
+              onClick={() => { setImage(null); setRecord(null); }}
+            >
+              remove
+            </button>
+          </p>
+        ) : (
+          <textarea
+            name="document"
+            aria-label="Document text"
+            autoComplete="off"
+            className="mt-4 h-56 w-full resize-y rounded-md border border-border bg-background p-4 font-mono text-sm"
+            placeholder="Paste document text here…"
+            value={text}
+            onChange={(e) => { setText(e.target.value); setRecord(null); }}
+          />
+        )}
+
+        <button
+          className={`mt-4 inline-flex min-h-11 items-center rounded-md px-4 text-label uppercase transition-colors ${disabled
+            ? "border border-rule text-mute"
+            : "bg-primary text-primary-foreground hover:bg-primary/85"}`}
+          disabled={disabled}
+          aria-busy={busy}
+          onClick={extract}
+        >
+          {busy ? (
+            <>
+              <span
+                aria-hidden="true"
+                className="mr-2 inline-block size-3 animate-spin rounded-full border-2 border-current border-t-transparent"
+              />
+              Reading…
+            </>
+          ) : (
+            "Extract the record"
+          )}
+        </button>
+        {/* The other half of a hollow control is saying what fills it. */}
+        {disabled && !busy ? (
+          <p className="mt-3 text-caption text-mute">Add a photo of a slip, or paste its text.</p>
+        ) : null}
+        {/* Always mounted so screen readers announce the error when it lands. */}
+        <div aria-live="polite">
+          {error ? <p className="mt-3 break-words text-sm text-destructive">{error}</p> : null}
+          {record ? <p className="sr-only">Record extracted. It is below.</p> : null}
+        </div>
+      </div>
+
+      {record ? (
+        <section className="mt-10">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-heading-2">The record</h2>
+            <button
+              className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent"
+              onClick={downloadCsv}
+            >
+              Download CSV
+            </button>
+          </div>
+
+          <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-4 text-sm sm:grid-cols-3">
+            {[
+              ["Type", record.document_type.replace("_", " ")],
+              ["Vendor / issuer", record.vendor_or_issuer],
+              ["Number", record.document_number],
+              ["Date", record.date],
+              ["Job / site", record.job_or_site_reference],
+              ["Total", record.total_amount],
+            ].map(([label, value]) => (
+              <div key={label} className="min-w-0">
+                <dt className="font-mono text-xs uppercase tracking-wider text-muted-foreground">{label}</dt>
+                <dd className="mt-1 break-words">{value || "—"}</dd>
+              </div>
+            ))}
+          </dl>
+
+          {record.line_items.length > 0 ? (
+            <div className="mt-6 overflow-x-auto rounded-md border border-border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                    <th className="p-3">Item</th>
+                    <th className="p-3">Qty</th>
+                    <th className="p-3">Unit</th>
+                    <th className="p-3 text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {record.line_items.map((li, i) => (
+                    <tr key={i} className="border-b border-border last:border-0">
+                      <td className="p-3">{li.description}</td>
+                      <td className="p-3 tabular-nums">{li.quantity}</td>
+                      <td className="p-3">{li.unit}</td>
+                      <td className="p-3 text-right tabular-nums">{li.amount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+
+          {record.flagged_as_unreadable.length > 0 ? (
+            <div className="mt-6 rounded-md border border-border p-4">
+              <h3 className="text-label uppercase text-foreground">
+                Flagged, not guessed
+              </h3>
+              <ul className="mt-2 space-y-1 break-words text-sm text-muted-foreground">
+                {record.flagged_as_unreadable.map((f, i) => (
+                  <li key={i}>{f}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {record.notes ? (
+            <p className="mt-4 break-words text-sm text-muted-foreground">{record.notes}</p>
+          ) : null}
+
+          <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-md border border-border bg-card p-6">
+            <p className="min-w-0 flex-1 basis-60 text-muted-foreground">
+              Want this on your own paperwork, every day? We build it for your documents.
+            </p>
+            <a
+              className="inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-label uppercase text-primary-foreground transition-colors hover:bg-primary/85"
+              href="https://www.vivancedata.com/contact?utm_source=demo-paperwork"
+            >
+              Book a call
+            </a>
+          </div>
+        </section>
+      ) : null}
+
+      {footer}
+    </main>
+  );
+}

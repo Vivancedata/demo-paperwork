@@ -2,9 +2,9 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import Home from "@/app/page";
-import { SAMPLE_DELIVERY_SLIP, SAMPLE_INVOICE } from "@/lib/samples";
-import type { ExtractedRecord } from "@/lib/schema";
+import Home from "@/app/paperwork/page";
+import { SAMPLE_DELIVERY_SLIP, SAMPLE_INVOICE } from "@/demos/paperwork/samples";
+import type { ExtractedRecord } from "@/demos/paperwork/schema";
 
 const RECORD: ExtractedRecord = {
   document_type: "delivery_slip",

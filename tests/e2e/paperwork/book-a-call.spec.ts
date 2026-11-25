@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test.use({ viewport: { width: 390, height: 844 } });
 
 test("after the sample slip is extracted, a phone visitor is offered a call", async ({ page }) => {
-  await page.route("**/api/extract", (route) =>
+  await page.route("**/api/paperwork/extract", (route) =>
     route.fulfill({
       json: {
         record: {
@@ -21,7 +21,7 @@ test("after the sample slip is extracted, a phone visitor is offered a call", as
     }),
   );
 
-  await page.goto("/");
+  await page.goto("/paperwork");
   await page.getByRole("button", { name: /sample delivery slip/i }).click();
   await page.getByRole("button", { name: /extract the record/i }).click();
   await expect(page.getByRole("heading", { name: /the record/i })).toBeVisible();

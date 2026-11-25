@@ -4,7 +4,7 @@ test("the demo page renders and a sample enables extraction", async ({ page }) =
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
 
-  await page.goto("/");
+  await page.goto("/paperwork");
   await expect(page).toHaveTitle(/Paperwork demo/i);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/your document, as a record/i);
 

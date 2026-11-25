@@ -12,14 +12,22 @@ const MAX_PER_WINDOW = 10;
 
 const hits = new Map<string, { count: number; windowStart: number }>();
 
-export function rateLimit(request: Request): { ok: true } | { ok: false; retryAfterSec: number } {
+/**
+ * `bucket` keeps each demo's count separate, so trying one demo does not use
+ * up a visitor's allowance on the others.
+ */
+export function rateLimit(
+  request: Request,
+  bucket = "",
+): { ok: true } | { ok: false; retryAfterSec: number } {
   // Vercel sets x-forwarded-for; first hop is the client.
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   const now = Date.now();
-  const entry = hits.get(ip);
+  const key = `${bucket}:${ip}`;
+  const entry = hits.get(key);
 
   if (!entry || now - entry.windowStart > WINDOW_MS) {
-    hits.set(ip, { count: 1, windowStart: now });
+    hits.set(key, { count: 1, windowStart: now });
     return { ok: true };
   }
   entry.count += 1;

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { POST } from "@/app/api/extract/route";
-import { SAMPLE_DELIVERY_SLIP } from "@/lib/samples";
-import type { ExtractedRecord } from "@/lib/schema";
+import { POST } from "@/app/api/paperwork/extract/route";
+import { SAMPLE_DELIVERY_SLIP } from "@/demos/paperwork/samples";
+import type { ExtractedRecord } from "@/demos/paperwork/schema";
 
 const RECORD: ExtractedRecord = {
   document_type: "delivery_slip",
@@ -19,7 +19,7 @@ let ipCounter = 0;
 
 function post(body: unknown, headers: Record<string, string> = {}): Request {
   ipCounter += 1;
-  return new Request("https://paperwork.vivancedata.com/api/extract", {
+  return new Request("https://paperwork.vivancedata.com/api/paperwork/extract", {
     method: "POST",
     headers: {
       origin: "https://paperwork.vivancedata.com",
@@ -68,7 +68,7 @@ beforeEach(() => {
   vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-test");
 });
 
-describe("POST /api/extract — guards", () => {
+describe("POST /api/paperwork/extract — guards", () => {
   it("refuses requests from other origins before doing anything else", async () => {
     const fetchMock = mockAnthropic(200, anthropicMessage());
     const res = await POST(post({ text: "x" }, { origin: "https://evil.example" }));
@@ -128,7 +128,7 @@ describe("POST /api/extract — guards", () => {
   });
 });
 
-describe("POST /api/extract — extraction", () => {
+describe("POST /api/paperwork/extract — extraction", () => {
   it("sends the document text with the extraction schema and returns the record", async () => {
     const fetchMock = mockAnthropic(200, anthropicMessage());
     const res = await POST(post({ text: SAMPLE_DELIVERY_SLIP }));

@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { SAMPLE_DELIVERY_SLIP, SAMPLE_INVOICE } from "@/lib/samples";
-import { EXTRACTION_SCHEMA, toCsv, type ExtractedRecord, type LineItem } from "@/lib/schema";
+import { SAMPLE_DELIVERY_SLIP, SAMPLE_INVOICE } from "@/demos/paperwork/samples";
+import { EXTRACTION_SCHEMA, toCsv, type ExtractedRecord, type LineItem } from "@/demos/paperwork/schema";
 
 const RECORD: ExtractedRecord = {
   document_type: "invoice",
