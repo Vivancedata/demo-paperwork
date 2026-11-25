@@ -46,4 +46,11 @@ describe("rateLimit", () => {
     vi.advanceTimersByTime(10 * 60 * 1000 + 1);
     expect(rateLimit(req(ip))).toEqual({ ok: true });
   });
+
+  it("counts each demo separately for the same IP", () => {
+    const ip = freshIp();
+    for (let i = 0; i < 10; i++) expect(rateLimit(req(ip), "paperwork")).toEqual({ ok: true });
+    expect(rateLimit(req(ip), "paperwork").ok).toBe(false);
+    expect(rateLimit(req(ip), "missed-call")).toEqual({ ok: true });
+  });
 });

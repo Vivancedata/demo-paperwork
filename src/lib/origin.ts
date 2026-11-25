@@ -1,21 +1,23 @@
+import { DEMOS } from "@/demos/registry";
+
 /**
- * Origin allowlist for the one endpoint that costs money.
+ * Origin allowlist for the endpoints that cost money.
  *
- * The extract route is meant to be called by this demo's own page, not by
+ * The extract routes are meant to be called by the demo pages, not by
  * scripts elsewhere on the internet spending the Anthropic key. Browsers send
  * `Origin` on every POST (and `Referer` on most), so a request whose origin is
- * not one of this demo's hosts is refused with 403. A determined caller can
+ * not one of the demos' hosts is refused with 403. A determined caller can
  * forge these headers from a server, so this is a cheap filter that sits in
  * front of the per-IP rate limit, not authentication.
  *
  * Allowed:
- * - the production hosts below;
+ * - every demo's production hosts (src/demos/registry.ts);
  * - this deployment's own Vercel URLs (VERCEL_URL, VERCEL_BRANCH_URL,
  *   VERCEL_PROJECT_PRODUCTION_URL), so preview deployments work;
  * - any extra hosts in ALLOWED_ORIGINS (comma-separated hostnames);
  * - localhost / 127.0.0.1 when NODE_ENV is not "production" (`next dev`).
  */
-const PRODUCTION_HOSTS = ["paperwork.vivancedata.com", "demo-paperwork.vercel.app"];
+const PRODUCTION_HOSTS = DEMOS.flatMap((d) => d.hosts);
 
 function allowedHosts(): Set<string> {
   const hosts = new Set<string>(PRODUCTION_HOSTS);

@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { isAllowedOrigin } from "@/lib/origin";
 import { rateLimit } from "@/lib/rate-limit";
-import { EXTRACTION_SCHEMA } from "@/lib/schema";
+import { EXTRACTION_SCHEMA } from "@/demos/paperwork/schema";
 
 export const maxDuration = 120;
 
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const limit = rateLimit(request);
+  const limit = rateLimit(request, "paperwork");
   if (!limit.ok) {
     return NextResponse.json(
       { error: `Rate limited — try again in ${limit.retryAfterSec}s. This demo allows 10 extractions per 10 minutes.` },

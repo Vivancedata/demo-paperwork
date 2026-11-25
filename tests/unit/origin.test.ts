@@ -14,6 +14,18 @@ describe("isAllowedOrigin", () => {
     expect(isAllowedOrigin(req({ origin: "https://demo-paperwork.vercel.app" }))).toBe(true);
   });
 
+  it("allows every demo's production hosts", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    for (const host of [
+      "calls.vivancedata.com",
+      "demo-missed-call.vercel.app",
+      "field.vivancedata.com",
+      "demo-field-photos.vercel.app",
+    ]) {
+      expect(isAllowedOrigin(req({ origin: `https://${host}` }))).toBe(true);
+    }
+  });
+
   it("refuses unknown origins and requests with no origin or referer", () => {
     vi.stubEnv("NODE_ENV", "production");
     expect(isAllowedOrigin(req({ origin: "https://evil.example" }))).toBe(false);

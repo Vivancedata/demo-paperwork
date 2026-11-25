@@ -55,8 +55,8 @@ try it on their own paperwork before paying for a build.
 
 ## Capabilities and Constraints
 
-- Whole surface is one route (`src/app/page.tsx`) plus one API route
-  (`src/app/api/extract/route.ts`). Around 600 lines total.
+- Whole surface is one route (`src/app/paperwork/page.tsx`) plus one API route
+  (`src/app/api/paperwork/extract/route.ts`). Around 600 lines total.
 - Next.js App Router, React, Tailwind, `@anthropic-ai/sdk`. All design tokens
   and components come from `@vivancedata/ui`; `src/app/globals.css` adds
   nothing but the Tailwind component and utility layers.
@@ -92,7 +92,7 @@ try it on their own paperwork before paying for a build.
 
 ## Evidence on Hand
 
-- Two bundled sample documents in `src/lib/samples.ts`: a delivery slip and
+- Two bundled sample documents in `src/demos/paperwork/samples.ts`: a delivery slip and
   an invoice. Both are fictional, both declare that in their first line, and
   both are deliberately defective so the flagging behaviour shows.
 - The live deployment at `paperwork.vivancedata.com`.

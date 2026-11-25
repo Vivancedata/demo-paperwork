@@ -1,0 +1,159 @@
+import Anthropic from "@anthropic-ai/sdk";
+import { NextResponse } from "next/server";
+import { isAllowedOrigin } from "@/lib/origin";
+import { rateLimit } from "@/lib/rate-limit";
+import { CAPTURE_SCHEMA } from "@/demos/field-photos/schema";
+
+export const maxDuration = 120;
+
+const SYSTEM = `You process what comes back from the field -- site photos,
+handwritten notes, signed slips -- and match each capture to the right job
+from the job list provided in the request.
+
+Rules that are the product, not suggestions:
+- Match only on evidence actually present (an address fragment, a PM's name,
+  a PO or job number) and quote that evidence in match_reasoning.
+- If the evidence supports no single job, matched_job_id is "" and
+  match_confidence is "none". A wrong-job match is the worst failure this
+  system can produce; "none" is always acceptable.
+- Anything illegible goes in flagged_as_unreadable verbatim, with a location
+  hint. Flagging is correct behaviour; guessing is a defect.`;
+
+const MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+
+type Payload = {
+  jobs?: string;
+  text?: string;
+  image?: { media_type: (typeof MEDIA_TYPES)[number]; data: string };
+};
+
+export async function POST(request: Request) {
+  if (!isAllowedOrigin(request)) {
+    return NextResponse.json(
+      { error: "This endpoint only serves the demo page it ships with." },
+      { status: 403 },
+    );
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json(
+      { error: "The demo is offline: ANTHROPIC_API_KEY is not configured on the server. Set it in the project environment and redeploy." },
+      { status: 503 },
+    );
+  }
+
+  const limit = rateLimit(request, "field-photos");
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: `Rate limited — try again in ${limit.retryAfterSec}s. This demo allows 10 extractions per 10 minutes.` },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSec) } },
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    body = undefined;
+  }
+  // `null`, an array or a bare string is valid JSON but not a payload;
+  // without this check `payload.text` throws and the route 500s.
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return NextResponse.json({ error: "Body must be JSON. Send `{ \"jobs\": \"…\", \"text\": \"…\" }` or an `image`." }, { status: 400 });
+  }
+  const payload = body as Payload;
+
+  if (typeof payload.text === "string" && payload.text.length > 20_000) {
+    return NextResponse.json({ error: "Text too long (20k characters max). Shorten it and try again." }, { status: 413 });
+  }
+  // The job list goes into the prompt too, so it gets the same ceiling as the
+  // capture; otherwise it is an uncapped way to run up the bill.
+  if (payload.jobs !== undefined && typeof payload.jobs !== "string") {
+    return NextResponse.json({ error: "`jobs` must be a string." }, { status: 400 });
+  }
+  if (typeof payload.jobs === "string" && payload.jobs.length > 20_000) {
+    return NextResponse.json({ error: "Job list too long (20k characters max). Shorten it and try again." }, { status: 413 });
+  }
+  const hasText = typeof payload.text === "string" && payload.text.trim().length > 0;
+  const hasImage = Boolean(payload.image?.data && payload.image.media_type);
+  if (
+    hasImage &&
+    (typeof payload.image!.data !== "string" || !MEDIA_TYPES.includes(payload.image!.media_type))
+  ) {
+    return NextResponse.json(
+      { error: "Unsupported image. Send a base64 JPEG, PNG or WebP." },
+      { status: 415 },
+    );
+  }
+  if (!hasText && !hasImage) {
+    return NextResponse.json(
+      { error: "Provide `text` or `image` to extract from." },
+      { status: 400 },
+    );
+  }
+  // ~7MB base64 ≈ 5MB image, Claude's per-image ceiling.
+  if (hasImage && payload.image!.data.length > 7_000_000) {
+    return NextResponse.json({ error: "Image too large (5\u00a0MB max). Use a smaller photo." }, { status: 413 });
+  }
+
+  const content: Anthropic.ContentBlockParam[] = hasImage
+    ? [
+        {
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: payload.image!.media_type,
+            data: payload.image!.data,
+          },
+        },
+        { type: "text", text: `Match this capture against these open jobs and extract the record.\n\n<jobs>\n${payload.jobs ?? ""}\n</jobs>` },
+      ]
+    : [
+        {
+          type: "text",
+          text: `Match this capture against these open jobs and extract the record.\n\n<jobs>\n${payload.jobs ?? ""}\n</jobs>\n\n<capture>\n${payload.text}\n</capture>`,
+        },
+      ];
+
+  const client = new Anthropic();
+  try {
+    const response = await client.messages.create({
+      // Haiku: the schema is flat (strings, enums, string arrays) and the job is
+      // transcription and matching, not open-ended reasoning. max_tokens covers
+      // the largest realistic record plus low-effort thinking, and caps what one
+      // request can cost.
+      model: "claude-haiku-5-5",
+      max_tokens: 2048,
+      system: SYSTEM,
+      messages: [{ role: "user", content }],
+      output_config: {
+        effort: "low",
+        format: { type: "json_schema", schema: CAPTURE_SCHEMA },
+      },
+    });
+
+    if (response.stop_reason === "refusal") {
+      return NextResponse.json({ error: "The model declined this input. Try a different sample." }, { status: 502 });
+    }
+    if (response.stop_reason === "max_tokens") {
+      return NextResponse.json({ error: "The input produced more output than this demo allows. Try a shorter one." }, { status: 502 });
+    }
+    const text = response.content.find((b) => b.type === "text");
+    if (!text || text.type !== "text") {
+      return NextResponse.json({ error: "Model returned no output. Try again." }, { status: 502 });
+    }
+    // output_config guarantees the text parses against CAPTURE_SCHEMA.
+    return NextResponse.json({ record: JSON.parse(text.text) });
+  } catch (error) {
+    if (error instanceof Anthropic.APIError) {
+      const friendly =
+        error instanceof Anthropic.AuthenticationError
+          ? "The server’s API key was rejected. Check the key in the project environment."
+          : error instanceof Anthropic.RateLimitError
+            ? "Rate limited — try again in a moment."
+            : `Extraction failed (${error.status}). Try again in a moment.`;
+      return NextResponse.json({ error: friendly }, { status: 502 });
+    }
+    throw error;
+  }
+}
